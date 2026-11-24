@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TaskFlow Pro | Gerenciador Full-Stack</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class'
+    };
+  </script>
+</head>
+<body class="bg-slate-100 dark:bg-slate-950 text-slate-800 dark:text-slate-100 min-h-screen transition-colors duration-200">
+
+  <!-- Barra Superior -->
+  <nav class="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-30">
+    <div class="max-w-5xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-bold text-lg shadow-sm">
+          ✓
+        </div>
+        <div>
+          <h1 class="font-bold text-lg sm:text-xl leading-tight text-slate-900 dark:text-white">TaskFlow Pro</h1>
+
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2 sm:gap-3">
+        <!-- Indicador de Status da API -->
+        <span id="badge-api" class="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+          <span id="dot-api" class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+          <span id="texto-api">Verificando API...</span>
+        </span>
+
+        <!-- Botão Tema Escuro / Claro -->
+        <button
+          id="btn-tema"
+          type="button"
+          title="Alternar tema claro/escuro"
+          class="p-2 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer text-sm"
+        >
+          🌙
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <main class="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6">
+
+    <!-- Alerta de Erro Detalhado (visível apenas se houver falha na API/Banco) -->
+    <div id="alerta-erro" class="hidden bg-red-50 dark:bg-red-950/60 border border-red-300 dark:border-red-800 rounded-2xl p-4 text-sm text-red-800 dark:text-red-200">
+      <div class="flex items-start justify-between gap-3">
+        <div>
+          <p class="font-bold">Falha na comunicação com a API / Banco de Dados</p>
+          <p id="alerta-erro-detalhe" class="mt-1 font-mono text-xs break-all"></p>
+          <p class="mt-2 text-xs opacity-90">
+            Dica: Certifique-se de iniciar o servidor com <code class="px-1.5 py-0.5 bg-red-100 dark:bg-red-900 rounded">npm start</code> e acessar via <code class="px-1.5 py-0.5 bg-red-100 dark:bg-red-900 rounded">http://localhost:3000</code> (ou configure <code class="px-1.5 py-0.5 bg-red-100 dark:bg-red-900 rounded">DATABASE_URL</code> na Vercel).
+          </p>
+        </div>
+        <button onclick="recarregarTudo()" class="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-semibold shrink-0 cursor-pointer">
+          Tentar novamente
+        </button>
+      </div>
+    </div>
+
+    <!-- Cards de Estatísticas -->
+    <section class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      <div class="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
+        <p class="text-xs font-medium text-slate-500 dark:text-slate-400">Total de Tarefas</p>
+        <p id="stat-total" class="text-2xl sm:text-3xl font-bold mt-1 text-slate-900 dark:text-white">0</p>
+      </div>
+
+      <div class="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
+        <div class="flex items-center justify-between">
+          <p class="text-xs font-medium text-slate-500 dark:text-slate-400">Concluídas</p>
+          <span id="stat-percentual" class="text-xs font-bold text-emerald-600 dark:text-emerald-400">0%</span>
+        </div>
+        <p id="stat-concluidas" class="text-2xl sm:text-3xl font-bold mt-1 text-emerald-600 dark:text-emerald-400">0</p>
+        <div class="w-full bg-slate-200 dark:bg-slate-800 h-1.5 rounded-full mt-2 overflow-hidden">
+          <div id="barra-progresso" class="bg-emerald-500 h-full transition-all duration-300" style="width: 0%"></div>
+        </div>
+      </div>
+
+      <div class="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
+        <p class="text-xs font-medium text-slate-500 dark:text-slate-400">Pendentes</p>
+        <p id="stat-pendentes" class="text-2xl sm:text-3xl font-bold mt-1 text-indigo-600 dark:text-indigo-400">0</p>
+      </div>
+
+      <div class="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
+        <p class="text-xs font-medium text-slate-500 dark:text-slate-400">Atrasadas / Urgentes</p>
+        <div class="flex items-baseline gap-2 mt-1">
+          <p id="stat-atrasadas" class="text-2xl sm:text-3xl font-bold text-rose-600 dark:text-rose-400">0</p>
+          <span id="stat-alta" class="text-xs text-slate-500 dark:text-slate-400">(0 alta prio.)</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Formulário de Nova Tarefa -->
+    <section class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs p-5 sm:p-6">
+      <h2 class="text-base font-semibold mb-4 text-slate-900 dark:text-white">Nova Tarefa</h2>
+      <form id="form-tarefa" class="space-y-4">
+        <div class="grid grid-cols-1 md:grid-cols-12 gap-3">
+          <div class="md:col-span-6">
+            <label for="input-titulo" class="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Título *</label>
+            <input
+              type="text"
+              id="input-titulo"
+              placeholder="Ex: Entregar trabalho de Banco de Dados"
+              required
+              class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+
+          <div class="md:col-span-2">
+            <label for="input-categoria" class="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Categoria</label>
+            <select
+              id="input-categoria"
+              class="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+              <option value="Estudos">Estudos</option>
+              <option value="Trabalho">Trabalho</option>
+              <option value="Pessoal">Pessoal</option>
+              <option value="Urgente">Urgente</option>
+              <option value="Geral">Geral</option>
+            </select>
+          </div>
+
+          <div class="md:col-span-2">
+            <label for="input-prioridade" class="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Prioridade</label>
+            <select
+              id="input-prioridade"
+              class="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+              <option value="baixa">Baixa</option>
+              <option value="media" selected>Média</option>
+              <option value="alta">Alta</option>
+            </select>
+          </div>
+
+          <div class="md:col-span-2">
+            <label for="input-data" class="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Prazo</label>
+            <input
+              type="date"
+              id="input-data"
+              class="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+        </div>
+
+        <div class="flex flex-col sm:flex-row gap-3">
+          <input
+            type="text"
+            id="input-descricao"
+            placeholder="Descrição ou observações adicionais (opcional)..."
+            class="flex-1 px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          />
+          <button
+            type="submit"
+            id="btn-criar"
+            class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-6 py-2.5 rounded-xl text-sm transition cursor-pointer shrink-0 shadow-xs"
+          >
+            + Adicionar Tarefa
+          </button>
+        </div>
+      </form>
+    </section>
+
+    <!-- Barra de Busca, Filtros e Ordenação -->
+    <section class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs p-4 sm:p-5 space-y-4">
+      <div class="flex flex-col md:flex-row gap-3 justify-between">
+        <!-- Abas de Status -->
+        <div class="inline-flex rounded-xl bg-slate-100 dark:bg-slate-800 p-1 self-start">
+          <button type="button" data-status="todas" class="tab-status px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-white dark:bg-slate-700 text-indigo-600 dark:text-white shadow-xs cursor-pointer">
+            Todas
+          </button>
+          <button type="button" data-status="pendentes" class="tab-status px-3.5 py-1.5 rounded-lg text-xs font-semibold text-slate-600 dark:text-slate-300 cursor-pointer">
+            Pendentes
+          </button>
+          <button type="button" data-status="concluidas" class="tab-status px-3.5 py-1.5 rounded-lg text-xs font-semibold text-slate-600 dark:text-slate-300 cursor-pointer">
+            Concluídas
+          </button>
+        </div>
+
+        <!-- Botão Limpar Concluídas -->
+        <button
+          type="button"
+          id="btn-limpar-concluidas"
+          class="text-xs font-medium text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/50 px-3 py-1.5 rounded-lg border border-rose-200 dark:border-rose-900 transition cursor-pointer self-start md:self-auto"
+        >
+          Limpar concluídas
+        </button>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <input
+          type="search"
+          id="filtro-busca"
+          placeholder="Buscar por título ou descrição..."
+          class="px-3.5 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        />
+
+        <select
+          id="filtro-categoria"
+          class="px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        >
+          <option value="todas">Todas as categorias</option>
+          <option value="Estudos">Estudos</option>
+          <option value="Trabalho">Trabalho</option>
+          <option value="Pessoal">Pessoal</option>
+          <option value="Urgente">Urgente</option>
+          <option value="Geral">Geral</option>
+        </select>
+
+        <select
+          id="filtro-prioridade"
+          class="px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        >
+          <option value="todas">Todas as prioridades</option>
+          <option value="alta">Prioridade Alta</option>
+          <option value="media">Prioridade Média</option>
+          <option value="baixa">Prioridade Baixa</option>
+        </select>
+
+        <select
+          id="filtro-ordenar"
+          class="px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        >
+          <option value="recentes">Ordenar: Mais recentes</option>
+          <option value="prazo">Ordenar: Prazo mais próximo</option>
+          <option value="prioridade">Ordenar: Maior prioridade</option>
+        </select>
+      </div>
+    </section>
+
+    <!-- Lista de Tarefas -->
+    <section class="space-y-3">
+      <p id="status-lista" class="text-sm text-slate-500 dark:text-slate-400 text-center py-8 hidden"></p>
+      <ul id="lista-tarefas" class="space-y-3"></ul>
+    </section>
+  </main>
+
+  <!-- Modal de Edição -->
+  <div id="modal-edicao" class="fixed inset-0 bg-slate-950/60 backdrop-blur-xs hidden items-center justify-center p-4 z-50">
+    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-lg w-full p-6 shadow-xl">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-lg font-bold text-slate-900 dark:text-white">Editar Tarefa</h3>
+        <button type="button" onclick="fecharModal()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xl cursor-pointer">
+          &times;
+        </button>
+      </div>
+
+      <form id="form-edicao" class="space-y-4">
+        <input type="hidden" id="edit-id" />
+
+        <div>
+          <label class="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Título *</label>
+          <input
+            type="text"
+            id="edit-titulo"
+            required
+            class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          />
+        </div>
+
+        <div>
+          <label class="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Descrição</label>
+          <textarea
+            id="edit-descricao"
+            rows="3"
+            class="w-full px-3.5 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          ></textarea>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div>
+            <label class="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Categoria</label>
+            <select
+              id="edit-categoria"
+              class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-sm"
+            >
+              <option value="Estudos">Estudos</option>
+              <option value="Trabalho">Trabalho</option>
+              <option value="Pessoal">Pessoal</option>
+              <option value="Urgente">Urgente</option>
+              <option value="Geral">Geral</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Prioridade</label>
+            <select
+              id="edit-prioridade"
+              class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-sm"
+            >
+              <option value="baixa">Baixa</option>
+              <option value="media">Média</option>
+              <option value="alta">Alta</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Prazo</label>
+            <input
+              type="date"
+              id="edit-data"
+              class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-sm"
+            />
+          </div>
+        </div>
+
+        <div class="flex justify-end gap-2 pt-2">
+          <button type="button" onclick="fecharModal()" class="px-4 py-2 rounded-xl text-sm font-medium border border-slate-300 dark:border-slate-700 cursor-pointer">
+            Cancelar
+          </button>
+          <button type="submit" class="px-5 py-2 rounded-xl text-sm font-semibold bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer">
+            Salvar Alterações
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Toast de Notificação -->
+  <div id="toast" class="fixed bottom-5 right-5 z-50 hidden px-4 py-3 rounded-xl shadow-lg text-sm font-medium text-white transition-all"></div>
+
+  <script>
+    // Detecta automaticamente a base da API (funciona tanto na Vercel/localhost:3000 quanto via Live Server na porta 5500)
+    const API_BASE = (() => {
+      const { protocol, hostname, port } = window.location;
+      if (protocol === 'file:') return 'http://localhost:3000/api';
+      if ((hostname === 'localhost' || hostname === '127.0.0.1') && port && port !== '3000') {
+        return 'http://localhost:3000/api';
+      }
+      return '/api';
+    })();
+
+    let statusAtual = 'todas';
+    let tarefasCache = [];
+
+    // Tema Escuro / Claro
+    const htmlEl = document.documentElement;
+    const btnTema = document.getElementById('btn-tema');
+    if (localStorage.getItem('tema') === 'dark') {
+      htmlEl.classList.add('dark');
+      btnTema.textContent = '☀️';
+    }
+    btnTema.addEventListener('click', () => {
+      const escuro = htmlEl.classList.toggle('dark');
+      localStorage.setItem('tema', escuro ? 'dark' : 'light');
+      btnTema.textContent = escuro ? '☀️' : '🌙';
+    });
+
+    // Notificação Toast
+    let toastTimer;
+    function mostrarToast(mensagem, tipo = 'sucesso') {
+      const toast = document.getElementById('toast');
+      toast.textContent = mensagem;
+      toast.className = `fixed bottom-5 right-5 z-50 px-4 py-3 rounded-xl shadow-lg text-sm font-medium text-white ${
+        tipo === 'erro' ? 'bg-rose-600' : 'bg-slate-900 dark:bg-indigo-600'
+      }`;
+      toast.classList.remove('hidden');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => toast.classList.add('hidden'), 3200);
+    }
+
+    function exibirErroGlobal(mensagem) {
+      const alerta = document.getElementById('alerta-erro');
+      document.getElementById('alerta-erro-detalhe').textContent = mensagem;
+      alerta.classList.remove('hidden');
+
+      document.getElementById('dot-api').className = 'w-2 h-2 rounded-full bg-rose-500';
+      document.getElementById('texto-api').textContent = 'API / Banco offline';
+    }
+
+    function limparErroGlobal() {
+      document.getElementById('alerta-erro').classList.add('hidden');
+      document.getElementById('dot-api').className = 'w-2 h-2 rounded-full bg-emerald-500';
+      document.getElementById('texto-api').textContent = 'Neon PostgreSQL Online';
+    }
+
+    async function fetchJson(url, options = {}) {
+      const resposta = await fetch(url, options);
+      if (resposta.status === 204) return null;
+      const dados = await resposta.json().catch(() => ({}));
+      if (!resposta.ok) {
+        throw new Error(dados.erro || `Erro HTTP ${resposta.status}`);
+      }
+      return dados;
+    }
+
+    function escapeHtml(str) {
+      return String(str ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    function formatarPrazo(dataStr, concluida) {
+      if (!dataStr) return '';
+      const [ano, mes, dia] = dataStr.split('-').map(Number);
+      const dataTarefa = new Date(ano, mes - 1, dia);
+      const hoje = new Date();
+      hoje.setHours(0, 0, 0, 0);
+
+      const diffDias = Math.round((dataTarefa - hoje) / (1000 * 60 * 60 * 24));
+      const dataFormatada = `${String(dia).padStart(2, '0')}/${String(mes).padStart(2, '0')}/${ano}`;
+
+      if (concluida) {
+        return `<span class="text-xs px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-500">Prazo: ${dataFormatada}</span>`;
+      }
+      if (diffDias < 0) {
+        return `<span class="text-xs font-semibold px-2 py-0.5 rounded-md bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300">Atrasada (${dataFormatada})</span>`;
+      }
+      if (diffDias === 0) {
+        return `<span class="text-xs font-semibold px-2 py-0.5 rounded-md bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300">Vence hoje (${dataFormatada})</span>`;
+      }
+      return `<span class="text-xs px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">Prazo: ${dataFormatada}</span>`;
+    }
+
+    function badgePrioridade(prio) {
+      const mapa = {
+        alta: 'bg-rose-100 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300',
+        media: 'bg-amber-100 dark:bg-amber-950/80 text-amber-700 dark:text-amber-300',
+        baixa: 'bg-sky-100 dark:bg-sky-950/80 text-sky-700 dark:text-sky-300',
+      };
+      const rotulo = { alta: 'Alta', media: 'Média', baixa: 'Baixa' };
+      return `<span class="text-xs font-semibold px-2 py-0.5 rounded-md ${mapa[prio] || mapa.media}">${rotulo[prio] || 'Média'}</span>`;
+    }
+
+    async function carregarEstatisticas() {
+      const stats = await fetchJson(`${API_BASE}/estatisticas`);
+      document.getElementById('stat-total').textContent = stats.total;
+      document.getElementById('stat-concluidas').textContent = stats.concluidas;
+      document.getElementById('stat-pendentes').textContent = stats.pendentes;
+      document.getElementById('stat-atrasadas').textContent = stats.atrasadas;
+      document.getElementById('stat-alta').textContent = `(${stats.alta_prioridade} alta prio.)`;
+
+      const pct = stats.total > 0 ? Math.round((stats.concluidas / stats.total) * 100) : 0;
+      document.getElementById('stat-percentual').textContent = `${pct}%`;
+      document.getElementById('barra-progresso').style.width = `${pct}%`;
+    }
+
+    async function carregarTarefas() {
+      const listaEl = document.getElementById('lista-tarefas');
+      const statusLista = document.getElementById('status-lista');
+
+      const params = new URLSearchParams({
+        busca: document.getElementById('filtro-busca').value,
+        status: statusAtual,
+        categoria: document.getElementById('filtro-categoria').value,
+        prioridade: document.getElementById('filtro-prioridade').value,
+        ordenar: document.getElementById('filtro-ordenar').value,
+      });
+
+      const tarefas = await fetchJson(`${API_BASE}/tarefas?${params.toString()}`);
+      tarefasCache = tarefas;
+      listaEl.innerHTML = '';
+
+      if (tarefas.length === 0) {
+        statusLista.textContent = 'Nenhuma tarefa encontrada com os filtros atuais.';
+        statusLista.classList.remove('hidden');
+        return;
+      }
+
+      statusLista.classList.add('hidden');
+      tarefas.forEach((t) => {
+        const li = document.createElement('li');
+        li.className = `bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 sm:p-5 shadow-xs transition hover:border-indigo-300 dark:hover:border-indigo-700 ${
+          t.concluida ? 'opacity-75' : ''
+        }`;
+
+        li.innerHTML = `
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div class="flex items-start gap-3.5 flex-1 min-w-0">
+              <button
+                type="button"
+                onclick="alternarTarefa(${t.id})"
+                title="Marcar como concluída/pendente"
+                class="mt-0.5 w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 transition cursor-pointer ${
+                  t.concluida
+                    ? 'bg-emerald-500 border-emerald-500 text-white'
+                    : 'border-slate-300 dark:border-slate-600 hover:border-indigo-500'
+                }"
+              >
+                ${t.concluida ? '✓' : ''}
+              </button>
+
+              <div class="min-w-0 flex-1 space-y-1.5">
+                <div class="flex flex-wrap items-center gap-2">
+                  <h3 class="font-semibold text-base break-words ${
+                    t.concluida ? 'line-through text-slate-400' : 'text-slate-900 dark:text-white'
+                  }">
+                    ${escapeHtml(t.titulo)}
+                  </h3>
+                  <span class="text-xs font-medium px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300">
+                    ${escapeHtml(t.categoria)}
+                  </span>
+                  ${badgePrioridade(t.prioridade)}
+                  ${formatarPrazo(t.data_limite, t.concluida)}
+                </div>
+
+                ${
+                  t.descricao
+                    ? `<p class="text-sm text-slate-600 dark:text-slate-400 break-words">${escapeHtml(t.descricao)}</p>`
+                    : ''
+                }
+              </div>
+            </div>
+
+            <div class="flex items-center gap-2 self-end sm:self-center shrink-0">
+              <button
+                type="button"
+                onclick="abrirModalEdicao(${t.id})"
+                class="text-xs font-semibold px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+              >
+                Editar
+              </button>
+              <button
+                type="button"
+                onclick="excluirTarefa(${t.id})"
+                class="text-xs font-semibold px-3 py-1.5 rounded-lg text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/60 transition cursor-pointer"
+              >
+                Excluir
+              </button>
+            </div>
+          </div>
+        `;
+        listaEl.appendChild(li);
+      });
+    }
+
+    async function recarregarTudo() {
+      try {
+        await Promise.all([carregarTarefas(), carregarEstatisticas()]);
+        limparErroGlobal();
+      } catch (err) {
+        exibirErroGlobal(err.message);
+      }
+    }
+
+    // Criar nova tarefa
+    document.getElementById('form-tarefa').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('btn-criar');
+      btn.disabled = true;
+
+      try {
+        await fetchJson(`${API_BASE}/tarefas`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            titulo: document.getElementById('input-titulo').value,
+            descricao: document.getElementById('input-descricao').value,
+            categoria: document.getElementById('input-categoria').value,
+            prioridade: document.getElementById('input-prioridade').value,
+            data_limite: document.getElementById('input-data').value,
+          }),
+        });
+
+        e.target.reset();
+        document.getElementById('input-prioridade').value = 'media';
+        mostrarToast('Tarefa criada com sucesso!');
+        await recarregarTudo();
+      } catch (err) {
+        mostrarToast(err.message, 'erro');
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    // Alternar concluída
+    async function alternarTarefa(id) {
+      try {
+        await fetchJson(`${API_BASE}/tarefas/${id}`, { method: 'PATCH' });
+        await recarregarTudo();
+      } catch (err) {
+        mostrarToast(err.message, 'erro');
+      }
+    }
+
+    // Excluir individual
+    async function excluirTarefa(id) {
+      try {
+        await fetchJson(`${API_BASE}/tarefas/${id}`, { method: 'DELETE' });
+        mostrarToast('Tarefa excluída.');
+        await recarregarTudo();
+      } catch (err) {
+        mostrarToast(err.message, 'erro');
+      }
+    }
+
+    // Limpar todas as concluídas
+    document.getElementById('btn-limpar-concluidas').addEventListener('click', async () => {
+      try {
+        const res = await fetchJson(`${API_BASE}/tarefas-concluidas`, { method: 'DELETE' });
+        mostrarToast(`${res.removidas} tarefa(s) concluída(s) removida(s).`);
+        await recarregarTudo();
+      } catch (err) {
+        mostrarToast(err.message, 'erro');
+      }
+    });
+
+    // Modal de Edição
+    function abrirModalEdicao(id) {
+      const tarefa = tarefasCache.find((item) => item.id === id);
+      if (!tarefa) return;
+
+      document.getElementById('edit-id').value = tarefa.id;
+      document.getElementById('edit-titulo').value = tarefa.titulo;
+      document.getElementById('edit-descricao').value = tarefa.descricao || '';
+      document.getElementById('edit-categoria').value = tarefa.categoria || 'Geral';
+      document.getElementById('edit-prioridade').value = tarefa.prioridade || 'media';
+      document.getElementById('edit-data').value = tarefa.data_limite || '';
+
+      const modal = document.getElementById('modal-edicao');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function fecharModal() {
+      const modal = document.getElementById('modal-edicao');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    document.getElementById('form-edicao').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const id = document.getElementById('edit-id').value;
+
+      try {
+        await fetchJson(`${API_BASE}/tarefas/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            titulo: document.getElementById('edit-titulo').value,
+            descricao: document.getElementById('edit-descricao').value,
+            categoria: document.getElementById('edit-categoria').value,
+            prioridade: document.getElementById('edit-prioridade').value,
+            data_limite: document.getElementById('edit-data').value,
+          }),
+        });
+        fecharModal();
+        mostrarToast('Tarefa atualizada!');
+        await recarregarTudo();
+      } catch (err) {
+        mostrarToast(err.message, 'erro');
+      }
+    });
+
+    // Eventos de Filtros e Abas
+    document.querySelectorAll('.tab-status').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        statusAtual = btn.dataset.status;
+        document.querySelectorAll('.tab-status').forEach((b) => {
+          b.className = 'tab-status px-3.5 py-1.5 rounded-lg text-xs font-semibold text-slate-600 dark:text-slate-300 cursor-pointer';
+        });
+        btn.className = 'tab-status px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-white dark:bg-slate-700 text-indigo-600 dark:text-white shadow-xs cursor-pointer';
+        recarregarTudo();
+      });
+    });
+
+    let debounceBusca;
+    document.getElementById('filtro-busca').addEventListener('input', () => {
+      clearTimeout(debounceBusca);
+      debounceBusca = setTimeout(recarregarTudo, 250);
+    });
+
+    ['filtro-categoria', 'filtro-prioridade', 'filtro-ordenar'].forEach((id) => {
+      document.getElementById(id).addEventListener('change', recarregarTudo);
+    });
+
+    // Inicialização
+    recarregarTudo();
+  </script>
+</body>
+</html>

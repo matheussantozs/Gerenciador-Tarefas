@@ -1,0 +1,15 @@
+{
+  "name": "taskflow-fullstack-neon",
+  "version": "2.0.0",
+  "description": "Sistema Full-Stack de Gestão de Tarefas e Projetos com Node.js, PostgreSQL (Neon) e Vercel",
+  "main": "api/index.js",
+  "scripts": {
+    "start": "node api/index.js",
+    "dev": "node --watch api/index.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.6.1",
+    "express": "^4.22.3",
+    "pg": "^8.23.1"
+  }
+}
